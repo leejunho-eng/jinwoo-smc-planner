@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>진우SMC 업무 플래너</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📝 진우SMC 업무 플래너</h1>
+        
+        <!-- 메뉴 탭 -->
+        <div class="tab-menu">
+            <button class="tab-btn active" onclick="showTab('write')">업무일지 작성</button>
+            <button class="tab-btn" onclick="showTab('manage')">관리자 확인</button>
+            <button class="tab-btn" onclick="showTab('analysis')">월간 분석</button>
+        </div>
+
+        <!-- 업무일지 작성 탭 -->
+        <div id="writeTab" class="tab-content active">
+            <div class="weekly-form-container">
+                <h2 id="formTitle">📅 주간 업무일지 작성</h2>
+                
+                <!-- 주간 정보 설정 -->
+                <div class="week-info-section">
+                    <div class="week-form-group">
+                        <label for="managerName">담당자명 *</label>
+                        <input type="text" id="managerName" name="managerName" required>
+                    </div>
+                    <div class="week-form-group">
+                        <label for="department">부서명</label>
+                        <select id="department" name="department">
+                            <option value="">부서 선택</option>
+                            <option value="관리부">관리부</option>
+                            <option value="생산부">생산부</option>
+                            <option value="연구소1팀">연구소1팀</option>
+                            <option value="연구소2팀">연구소2팀</option>
+                            <option value="연구소3팀">연구소3팀</option>
+                            <option value="연구소4팀">연구소4팀</option>
+                            <option value="연구소5팀">연구소5팀</option>
+                            <option value="EV팀">EV팀</option>
+                            <option value="전략팀">전략팀</option>
+                            <option value="영업팀">영업팀</option>
+                            <option value="기획팀">기획팀</option>
+                        </select>
+                    </div>
+                    <div class="week-form-group">
+                        <label for="weekSelector">주차 선택 *</label>
+                        <input type="week" id="weekSelector" name="weekSelector" required onchange="updateWeekInfo()">
+                    </div>
+                </div>
+
+                <!-- 주간 정보 표시 -->
+                <div id="weekInfoDisplay" class="week-info-display hidden">
+                    <div class="week-header">
+                        <h3 id="weekTitle"></h3>
+                        <div class="week-progress">
+                            <span>작성 진행률: </span>
+                            <div class="progress-bar">
+                                <div id="progressFill" class="progress-fill"></div>
+                            </div>
+                            <span id="progressText">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 주간 업무일지 폼 -->
+                <form id="weeklyWorkForm" class="weekly-form hidden">
+                    <!-- 월요일 -->
+                    <div class="day-section">
+                        <div class="day-header">
+                            <h4>🔵 월요일</h4>
+                            <span class="day-date" id="mondayDate"></span>
+                            <div class="day-status" id="mondayStatus">미작성</div>
+                        </div>
+                        <textarea id="mondayWork" name="mondayWork" rows="4" 
+                                placeholder="월요일 업무 내용을 작성해주세요..." 
+                                onchange="updateProgress()"></textarea>
+                    </div>
+
+                    <!-- 화요일 -->
+                    <div class="day-section">
+                        <div class="day-header">
+                            <h4>🟢 화요일</h4>
+                            <span class="day-date" id="tuesdayDate"></span>
+                            <div class="day-status" id="tuesdayStatus">미작성</div>
+                        </div>
+                        <textarea id="tuesdayWork" name="tuesdayWork" rows="4" 
+                                placeholder="화요일 업무 내용을 작성해주세요..." 
+                                onchange="updateProgress()"></textarea>
+                    </div>
+
+                    <!-- 수요일 -->
+                    <div class="day-section">
+                        <div class="day-header">
+                            <h4>🟡 수요일</h4>
+                            <span class="day-date" id="wednesdayDate"></span>
+                            <div class="day-status" id="wednesdayStatus">미작성</div>
+                        </div>
+                        <textarea id="wednesdayWork" name="wednesdayWork" rows="4" 
+                                placeholder="수요일 업무 내용을 작성해주세요..." 
+                                onchange="updateProgress()"></textarea>
+                    </div>
+
+                    <!-- 목요일 -->
+                    <div class="day-section">
+                        <div class="day-header">
+                            <h4>🟠 목요일</h4>
+                            <span class="day-date" id="thursdayDate"></span>
+                            <div class="day-status" id="thursdayStatus">미작성</div>
+                        </div>
+                        <textarea id="thursdayWork" name="thursdayWork" rows="4" 
+                                placeholder="목요일 업무 내용을 작성해주세요..." 
+                                onchange="updateProgress()"></textarea>
+                    </div>
+
+                    <!-- 금요일 -->
+                    <div class="day-section">
+                        <div class="day-header">
+                            <h4>🔴 금요일</h4>
+                            <span class="day-date" id="fridayDate"></span>
+                            <div class="day-status" id="fridayStatus">미작성</div>
+                        </div>
+                        <textarea id="fridayWork" name="fridayWork" rows="4" 
+                                placeholder="금요일 업무 내용을 작성해주세요..." 
+                                onchange="updateProgress()"></textarea>
+                    </div>
+
+                    <!-- 특근 -->
+                    <div class="day-section overtime-section">
+                        <div class="day-header">
+                            <h4>⚡ 특근 (주말/휴일)</h4>
+                            <div class="day-status" id="overtimeStatus">미작성</div>
+                        </div>
+                        <textarea id="overtimeWork" name="overtimeWork" rows="4" 
+                                placeholder="특근 업무가 있었다면 작성해주세요..." 
+                                onchange="updateProgress()"></textarea>
+                    </div>
+
+                    <!-- 주간 요약 -->
+                    <div class="summary-section">
+                        <div class="summary-header">
+                            <h4>📝 주간 업무 요약</h4>
+                        </div>
+                        <textarea id="weeklySummary" name="weeklySummary" rows="3" 
+                                placeholder="이번 주 주요 성과, 이슈, 다음 주 계획 등을 요약해주세요..."></textarea>
+                    </div>
+
+                    <!-- 버튼 그룹 -->
+                    <div class="weekly-button-group">
+                        <button type="button" class="btn-submit" onclick="submitDailyWork()">제출</button>
+                        <button type="submit" class="btn-primary">주간일지 최종 저장</button>
+                        <button type="button" class="btn-secondary" onclick="clearWeeklyForm()">초기화</button>
+                        <button type="button" class="btn-edit" onclick="loadExistingWeekly()">주간업무 수정</button>
+                    </div>
+                </form>
+
+                <!-- 상태 메시지 -->
+                <div id="weeklyLoading" class="message loading hidden">저장 중...</div>
+                <div id="weeklySuccess" class="message success hidden"></div>
+                <div id="weeklyError" class="message error hidden"></div>
+            </div>
+        </div>
+
+        <!-- 관리자 확인 탭 -->
+        <div id="manageTab" class="tab-content">
+            <!-- 관리자 인증 섹션 -->
+            <div id="adminAuthSection" class="admin-auth-section">
+                <div class="auth-container">
+                    <h2>🔐 관리자 인증</h2>
+                    <p>관리자 권한이 필요합니다. 비밀번호를 입력해주세요.</p>
+                    
+                    <div class="auth-form">
+                        <input type="password" id="adminPassword" placeholder="관리자 비밀번호" onkeypress="if(event.key==='Enter') authenticateAdmin()">
+                        <button onclick="authenticateAdmin()" class="btn-auth">인증</button>
+                    </div>
+                    
+                    <div id="authError" class="auth-error hidden"></div>
+                </div>
+            </div>
+
+            <!-- 관리자 메인 섹션 (인증 후 표시) -->
+            <div id="adminMainSection" class="manage-container hidden">
+                <div class="admin-header">
+                    <h2>관리자 확인</h2>
+                    <button onclick="logoutAdmin()" class="btn-logout">로그아웃</button>
+                </div>
+                
+                <div class="filter-section">
+                    <div class="filter-group">
+                        <label for="filterWeek">주차 필터:</label>
+                        <input type="week" id="filterWeek" onchange="loadWeeklyDiaries()">
+                    </div>
+                    <div class="filter-group">
+                        <label for="filterManagerName">담당자명:</label>
+                        <input type="text" id="filterManagerName" placeholder="담당자명 검색" onchange="loadWeeklyDiaries()">
+                    </div>
+                    <div class="filter-group">
+                        <label for="filterDepartment">부서 필터:</label>
+                        <select id="filterDepartment" onchange="loadWeeklyDiaries()">
+                            <option value="">전체 부서</option>
+                            <option value="관리부">관리부</option>
+                            <option value="생산부">생산부</option>
+                            <option value="연구소1팀">연구소1팀</option>
+                            <option value="연구소2팀">연구소2팀</option>
+                            <option value="연구소3팀">연구소3팀</option>
+                            <option value="연구소4팀">연구소4팀</option>
+                            <option value="연구소5팀">연구소5팀</option>
+                            <option value="EV팀">EV팀</option>
+                            <option value="전략팀">전략팀</option>
+                            <option value="영업팀">영업팀</option>
+                            <option value="기획팀">기획팀</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="filterStatus">상태 필터:</label>
+                        <select id="filterStatus" onchange="loadWeeklyDiaries()">
+                            <option value="">전체</option>
+                            <option value="작성중">작성중</option>
+                            <option value="완료">완료</option>
+                        </select>
+                    </div>
+                    <button class="btn-refresh" onclick="loadWeeklyDiaries()">새로고침</button>
+                </div>
+
+                <!-- 주간 업무일지 목록 -->
+                <div id="weeklyDiaryList" class="weekly-diary-list">
+                    <div class="loading-text">주간 업무일지를 불러오는 중...</div>
+                </div>
+
+                <!-- 상세보기 모달 -->
+                <div id="detailModal" class="modal hidden">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>업무일지 상세보기</h3>
+                            <button class="close-btn" onclick="closeModal()">&times;</button>
+                        </div>
+                        <div class="modal-body" id="modalBody">
+                            <!-- 상세 내용이 여기에 표시됩니다 -->
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn-primary" onclick="markAsOpened()">확인 완료</button>
+                            <button class="btn-secondary" onclick="closeModal()">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 월간 분석 탭 -->
+        <div id="analysisTab" class="tab-content">
+            <!-- 관리자 인증 섹션 -->
+            <div id="analysisAuthSection" class="admin-auth-section">
+                <div class="auth-container">
+                    <h2>🔐 관리자 인증</h2>
+                    <p>월간 분석 기능은 관리자 권한이 필요합니다.</p>
+                    
+                    <div class="auth-form">
+                        <input type="password" id="analysisPassword" placeholder="관리자 비밀번호" onkeypress="if(event.key==='Enter') authenticateAnalysis()">
+                        <button onclick="authenticateAnalysis()" class="btn-auth">인증</button>
+                    </div>
+                    
+                    <div id="analysisAuthError" class="auth-error hidden"></div>
+                </div>
+            </div>
+
+            <!-- 월간 분석 메인 섹션 -->
+            <div id="analysisMainSection" class="analysis-container hidden">
+                <div class="admin-header">
+                    <h2>📊 월간 업무 분석</h2>
+                    <button onclick="logoutAnalysis()" class="btn-logout">로그아웃</button>
+                </div>
+
+                <!-- 분석 조건 설정 -->
+                <div class="analysis-filter-section">
+                    <div class="filter-group">
+                        <label for="analysisYear">연도:</label>
+                        <select id="analysisYear" onchange="loadMonthlyAnalysis()">
+                            <!-- JavaScript로 동적 생성 -->
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="analysisMonth">월:</label>
+                        <select id="analysisMonth" onchange="loadMonthlyAnalysis()">
+                            <option value="1">1월</option>
+                            <option value="2">2월</option>
+                            <option value="3">3월</option>
+                            <option value="4">4월</option>
+                            <option value="5">5월</option>
+                            <option value="6">6월</option>
+                            <option value="7">7월</option>
+                            <option value="8">8월</option>
+                            <option value="9">9월</option>
+                            <option value="10">10월</option>
+                            <option value="11">11월</option>
+                            <option value="12">12월</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="analysisDepartment">부서:</label>
+                        <select id="analysisDepartment" onchange="loadMonthlyAnalysis()">
+                            <option value="">전체 부서</option>
+                            <option value="관리부">관리부</option>
+                            <option value="생산부">생산부</option>
+                            <option value="연구소1팀">연구소1팀</option>
+                            <option value="연구소2팀">연구소2팀</option>
+                            <option value="연구소3팀">연구소3팀</option>
+                            <option value="연구소4팀">연구소4팀</option>
+                            <option value="연구소5팀">연구소5팀</option>
+                            <option value="EV팀">EV팀</option>
+                            <option value="전략팀">전략팀</option>
+                            <option value="영업팀">영업팀</option>
+                            <option value="기획팀">기획팀</option>
+                        </select>
+                    </div>
+                    <button class="btn-refresh" onclick="loadMonthlyAnalysis()">분석 실행</button>
+                </div>
+
+                <!-- 분석 결과 -->
+                <div id="analysisResults" class="analysis-results">
+                    <div class="analysis-info">분석 조건을 선택하고 '분석 실행' 버튼을 클릭하세요.</div>
+                </div>
+
+                <!-- 요일별 통계 차트 -->
+                <div class="chart-section">
+                    <h3>📈 요일별 업무 통계</h3>
+                    <div id="workTypeChart" class="chart-container">
+                        <canvas id="chartCanvas" width="400" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- 상세 분석 테이블 -->
+                <div class="detail-analysis-section">
+                    <h3>📋 상세 분석 결과</h3>
+                    <div id="detailAnalysisTable" class="detail-table">
+                        <!-- 분석 결과 테이블이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

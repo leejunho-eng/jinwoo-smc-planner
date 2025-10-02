@@ -7,30 +7,82 @@ let currentWeeklyDiary = null;
 let isAdminAuthenticated = false;
 let isAnalysisAuthenticated = false;
 let currentWeekInfo = null;
+let currentUser = null;
 
 // 관리자 비밀번호
 const ADMIN_PASSWORD = 'admin123';
 
 // 페이지 로드 시 초기화
 window.onload = function() {
+    // 로그인 상태 확인
+    checkUserLogin();
+};
+
+// 사용자 로그인 상태 확인
+function checkUserLogin() {
+    const savedUser = sessionStorage.getItem('currentUser');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        showMainApp();
+        setUserInfo();
+    } else {
+        showMainApp(); // 바로 메인 화면 표시
+    }
+}
+
+// 로그인 화면 표시
+function showLoginScreen() {
+    document.getElementById('loginSection').classList.remove('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+}
+
+// 메인 앱 표시
+function showMainApp() {
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    
+    // 메인 앱 초기화
+    initializeMainApp();
+}
+
+// 사용자 정보 설정
+function setUserInfo() {
+    if (currentUser) {
+        document.getElementById('currentUser').textContent = `${currentUser.manager_name} (${currentUser.department})`;
+        document.getElementById('managerName').value = currentUser.manager_name;
+        document.getElementById('managerName').readOnly = true;
+        document.getElementById('department').value = currentUser.department;
+        document.getElementById('department').readOnly = true;
+    } else {
+        document.getElementById('currentUser').textContent = '로그인이 필요합니다';
+        document.getElementById('managerName').readOnly = false;
+        document.getElementById('department').readOnly = false;
+    }
+}
+
+// 메인 앱 초기화
+function initializeMainApp() {
     // 현재 주차를 기본값으로 설정
     const today = new Date();
     const currentWeek = getWeekString(today);
     document.getElementById('weekSelector').value = currentWeek;
     
-    // 주간 업무일지 폼 제출 이벤트 리스너
-    document.getElementById('weeklyWorkForm').addEventListener('submit', saveWeeklyDiary);
+    // 사용자 정보 설정
+    setUserInfo();
     
-    // 담당자명 입력 시 자동 불러오기 이벤트 추가
-    document.getElementById('managerName').addEventListener('blur', function() {
-        const managerName = this.value.trim();
-        const weekSelector = document.getElementById('weekSelector').value;
-        if (managerName && weekSelector) {
-            setTimeout(() => {
-                autoLoadExistingData();
-            }, 300);
-        }
-    });
+    // 주간 업무일지 폼 제출 이벤트 리스너 (중복 방지)
+    const form = document.getElementById('weeklyWorkForm');
+    if (form && !form.hasAttribute('data-listener-added')) {
+        form.addEventListener('submit', saveWeeklyDiary);
+        form.setAttribute('data-listener-added', 'true');
+    }
+    
+    // 담당자명 입력 시 인증 체크 이벤트 추가
+    const managerNameInput = document.getElementById('managerName');
+    if (managerNameInput && !managerNameInput.hasAttribute('data-auth-listener')) {
+        managerNameInput.addEventListener('blur', checkUserAuth);
+        managerNameInput.setAttribute('data-auth-listener', 'true');
+    }
     
     // 세션에서 관리자 인증 상태 복원
     if (sessionStorage.getItem('adminAuth') === 'true') {
@@ -43,8 +95,154 @@ window.onload = function() {
     
     // 연도 선택 옵션 생성
     initializeAnalysisYears();
+}
+
+// 사용자 로그인
+async function userLogin() {
+    const loginName = document.getElementById('loginName').value.trim();
+    const loginPassword = document.getElementById('loginPassword').value.trim();
     
-};
+    if (!loginName || !loginPassword) {
+        showMessage('loginError', '담당자명과 비밀번호를 모두 입력해주세요.');
+        return;
+    }
+    
+    try {
+        // 사용자 인증
+        const query = `${SUPABASE_URL}/rest/v1/user_accounts?manager_name=eq.${encodeURIComponent(loginName)}&password=eq.${encodeURIComponent(loginPassword)}&is_active=eq.true`;
+        
+        const response = await fetch(query, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('로그인 중 오류가 발생했습니다.');
+        }
+        
+        const users = await response.json();
+        
+        if (users && users.length > 0) {
+            // 로그인 성공
+            currentUser = users[0];
+            sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+            showMainApp();
+        } else {
+            // 로그인 실패
+            showMessage('loginError', '담당자명 또는 비밀번호가 올바르지 않습니다.');
+        }
+        
+    } catch (err) {
+        showMessage('loginError', `로그인 오류: ${err.message}`);
+    }
+}
+
+// 사용자 인증 체크 (담당자명 입력 시)
+async function checkUserAuth() {
+    const managerName = document.getElementById('managerName').value.trim();
+    
+    if (!managerName) {
+        return;
+    }
+    
+    // 이미 로그인된 사용자와 같으면 스킵
+    if (currentUser && currentUser.manager_name === managerName) {
+        return;
+    }
+    
+    try {
+        // 해당 사용자가 존재하는지 확인
+        const query = `${SUPABASE_URL}/rest/v1/user_accounts?manager_name=eq.${encodeURIComponent(managerName)}&is_active=eq.true`;
+        
+        const response = await fetch(query, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        if (response.ok) {
+            const users = await response.json();
+            
+            if (users && users.length > 0) {
+                // 사용자가 존재하면 비밀번호 요청
+                const password = prompt(`${managerName}님의 비밀번호를 입력하세요:`);
+                
+                if (password) {
+                    await authenticateUser(managerName, password);
+                } else {
+                    // 비밀번호 입력 취소 시 필드 초기화
+                    document.getElementById('managerName').value = '';
+                }
+            } else {
+                // 사용자가 없으면 경고
+                alert(`"${managerName}" 사용자를 찾을 수 없습니다.\n관리자에게 계정 생성을 요청하세요.`);
+                document.getElementById('managerName').value = '';
+            }
+        }
+    } catch (err) {
+        console.error('사용자 확인 오류:', err);
+    }
+}
+
+// 사용자 인증 처리
+async function authenticateUser(managerName, password) {
+    try {
+        const query = `${SUPABASE_URL}/rest/v1/user_accounts?manager_name=eq.${encodeURIComponent(managerName)}&password=eq.${encodeURIComponent(password)}&is_active=eq.true`;
+        
+        const response = await fetch(query, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        if (response.ok) {
+            const users = await response.json();
+            
+            if (users && users.length > 0) {
+                // 인증 성공
+                currentUser = users[0];
+                sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                setUserInfo();
+                
+                // 기존 데이터 자동 불러오기
+                setTimeout(() => {
+                    autoLoadExistingData();
+                }, 300);
+                
+                showMessage('weeklySuccess', `✓ ${managerName}님 로그인 성공!`);
+            } else {
+                // 비밀번호 틀림
+                alert('비밀번호가 올바르지 않습니다.');
+                document.getElementById('managerName').value = '';
+            }
+        }
+    } catch (err) {
+        alert(`인증 오류: ${err.message}`);
+        document.getElementById('managerName').value = '';
+    }
+}
+
+// 사용자 로그아웃
+function userLogout() {
+    if (confirm('로그아웃 하시겠습니까?')) {
+        currentUser = null;
+        sessionStorage.removeItem('currentUser');
+        sessionStorage.removeItem('adminAuth');
+        sessionStorage.removeItem('analysisAuth');
+        isAdminAuthenticated = false;
+        isAnalysisAuthenticated = false;
+        
+        // 폼 초기화
+        document.getElementById('weeklyWorkForm').reset();
+        setUserInfo();
+        
+        showMessage('weeklySuccess', '✓ 로그아웃되었습니다.');
+    }
+}
 
 // 탭 전환 함수
 function showTab(tabName) {
@@ -64,6 +262,11 @@ function showTab(tabName) {
     // 월간 분석 탭이 선택되면 인증 확인
     if (tabName === 'analysis') {
         checkAnalysisAuth();
+    }
+    
+    // 사용자 관리 탭이 선택되면 인증 확인
+    if (tabName === 'users') {
+        checkUserAdminAuth();
     }
 }
 
@@ -1283,10 +1486,256 @@ function generateTeamAnalysis(diaries, year, month, department) {
     resultsDiv.innerHTML = html;
 }
 
-// 페이지 로드 시 자동 불러오기 안내
-window.addEventListener('load', function() {
-    // 현재 주차 자동 설정 후 안내 메시지
-    setTimeout(() => {
-        showMessage('weeklySuccess', 'ℹ️ 담당자명을 입력하면 기존 데이터가 자동으로 불러와집니다.');
-    }, 2000);
-});
+// 사용자 관리 인증 확인
+function checkUserAdminAuth() {
+    const authSection = document.getElementById('userAuthSection');
+    const mainSection = document.getElementById('userMainSection');
+    
+    if (sessionStorage.getItem('userAdminAuth') === 'true') {
+        authSection.classList.add('hidden');
+        mainSection.classList.remove('hidden');
+        loadUserList();
+    } else {
+        authSection.classList.remove('hidden');
+        mainSection.classList.add('hidden');
+    }
+}
+
+// 사용자 관리 관리자 인증
+function authenticateUserAdmin() {
+    const password = document.getElementById('userAdminPassword').value;
+    
+    if (password === ADMIN_PASSWORD) {
+        sessionStorage.setItem('userAdminAuth', 'true');
+        document.getElementById('userAuthSection').classList.add('hidden');
+        document.getElementById('userMainSection').classList.remove('hidden');
+        loadUserList();
+        showMessage('userSuccess', '✓ 관리자 인증이 완료되었습니다.');
+    } else {
+        showMessage('userAuthError', '✗ 비밀번호가 올바르지 않습니다.');
+    }
+}
+
+// 새 사용자 추가
+async function addNewUser() {
+    const name = document.getElementById('newUserName').value.trim();
+    const dept = document.getElementById('newUserDept').value;
+    const password = document.getElementById('newUserPassword').value.trim();
+    
+    if (!name || !dept || !password) {
+        showMessage('userError', '모든 필드를 입력해주세요.');
+        return;
+    }
+    
+    const loading = document.getElementById('userLoading');
+    loading.classList.remove('hidden');
+    
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/user_accounts`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+                manager_name: name,
+                department: dept,
+                password: password,
+                is_active: true
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || '사용자 추가 중 오류가 발생했습니다.');
+        }
+        
+        // 폼 초기화
+        document.getElementById('newUserName').value = '';
+        document.getElementById('newUserDept').value = '';
+        document.getElementById('newUserPassword').value = '';
+        
+        showMessage('userSuccess', '✓ 새 사용자가 추가되었습니다.');
+        loadUserList();
+        
+    } catch (err) {
+        showMessage('userError', `✗ 오류: ${err.message}`);
+    } finally {
+        loading.classList.add('hidden');
+    }
+}
+
+// 사용자 목록 불러오기
+async function loadUserList() {
+    const loading = document.getElementById('userLoading');
+    const userList = document.getElementById('userList');
+    
+    loading.classList.remove('hidden');
+    
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/user_accounts?order=created_at.desc`, {
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('사용자 목록을 불러올 수 없습니다.');
+        }
+        
+        const users = await response.json();
+        
+        if (users && users.length > 0) {
+            let html = '';
+            users.forEach(user => {
+                const statusClass = user.is_active ? '' : 'inactive';
+                const toggleText = user.is_active ? '비활성화' : '활성화';
+                const toggleAction = user.is_active ? 'false' : 'true';
+                
+                html += `
+                    <div class="user-item ${statusClass}">
+                        <div class="user-name">${user.manager_name}</div>
+                        <div class="user-dept">${user.department || '미지정'}</div>
+                        <div class="user-password">${user.password}</div>
+                        <div class="user-status">${user.is_active ? '활성' : '비활성'}</div>
+                        <div class="user-actions">
+                            <button class="btn-edit-user" onclick="editUser(${user.id}, '${user.manager_name}', '${user.department}', '${user.password}')">수정</button>
+                            <button class="btn-toggle-user" onclick="toggleUser(${user.id}, ${toggleAction})">${toggleText}</button>
+                            <button class="btn-delete-user" onclick="deleteUser(${user.id}, '${user.manager_name}')">삭제</button>
+                        </div>
+                    </div>
+                `;
+            });
+            userList.innerHTML = html;
+        } else {
+            userList.innerHTML = '<div class="no-data">등록된 사용자가 없습니다.</div>';
+        }
+        
+    } catch (err) {
+        showMessage('userError', `✗ 오류: ${err.message}`);
+        userList.innerHTML = '<div class="no-data">사용자 목록을 불러올 수 없습니다.</div>';
+    } finally {
+        loading.classList.add('hidden');
+    }
+}
+
+// 사용자 수정
+function editUser(id, name, dept, password) {
+    const newName = prompt('담당자명:', name);
+    if (newName === null) return;
+    
+    const newDept = prompt('부서:', dept);
+    if (newDept === null) return;
+    
+    const newPassword = prompt('비밀번호:', password);
+    if (newPassword === null) return;
+    
+    updateUser(id, newName.trim(), newDept.trim(), newPassword.trim());
+}
+
+// 사용자 정보 업데이트
+async function updateUser(id, name, dept, password) {
+    if (!name || !dept || !password) {
+        showMessage('userError', '모든 필드를 입력해주세요.');
+        return;
+    }
+    
+    const loading = document.getElementById('userLoading');
+    loading.classList.remove('hidden');
+    
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/user_accounts?id=eq.${id}`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                manager_name: name,
+                department: dept,
+                password: password
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('사용자 정보 수정 중 오류가 발생했습니다.');
+        }
+        
+        showMessage('userSuccess', '✓ 사용자 정보가 수정되었습니다.');
+        loadUserList();
+        
+    } catch (err) {
+        showMessage('userError', `✗ 오류: ${err.message}`);
+    } finally {
+        loading.classList.add('hidden');
+    }
+}
+
+// 사용자 활성/비활성 토글
+async function toggleUser(id, isActive) {
+    const loading = document.getElementById('userLoading');
+    loading.classList.remove('hidden');
+    
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/user_accounts?id=eq.${id}`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                is_active: isActive
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('사용자 상태 변경 중 오류가 발생했습니다.');
+        }
+        
+        const statusText = isActive ? '활성화' : '비활성화';
+        showMessage('userSuccess', `✓ 사용자가 ${statusText}되었습니다.`);
+        loadUserList();
+        
+    } catch (err) {
+        showMessage('userError', `✗ 오류: ${err.message}`);
+    } finally {
+        loading.classList.add('hidden');
+    }
+}
+
+// 사용자 삭제
+async function deleteUser(id, name) {
+    if (!confirm(`정말로 "${name}" 사용자를 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`)) {
+        return;
+    }
+    
+    const loading = document.getElementById('userLoading');
+    loading.classList.remove('hidden');
+    
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/user_accounts?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('사용자 삭제 중 오류가 발생했습니다.');
+        }
+        
+        showMessage('userSuccess', `✓ "${name}" 사용자가 삭제되었습니다.`);
+        loadUserList();
+        
+    } catch (err) {
+        showMessage('userError', `✗ 오류: ${err.message}`);
+    } finally {
+        loading.classList.add('hidden');
+    }
+}

@@ -8,13 +8,41 @@
 </head>
 <body>
     <div class="container">
-        <h1>📝 진우SMC 업무 플래너</h1>
-        
-        <!-- 메뉴 탭 -->
+        <!-- 로그인 화면 (숨김) -->
+        <div id="loginSection" class="login-section hidden">
+            <div class="login-container">
+                <h1>🔐 진우SMC 업무 플래너</h1>
+                <div class="login-form">
+                    <h3>로그인</h3>
+                    <div class="form-group">
+                        <label for="loginName">담당자명</label>
+                        <input type="text" id="loginName" placeholder="담당자명을 입력하세요">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">비밀번호</label>
+                        <input type="password" id="loginPassword" placeholder="비밀번호를 입력하세요">
+                    </div>
+                    <button type="button" class="btn-login" onclick="userLogin()">로그인</button>
+                    <div id="loginError" class="message error hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 애플리케이션 -->
+        <div id="mainApp">
+            <div class="user-info">
+                <span id="currentUser"></span>
+                <button type="button" class="btn-logout" onclick="userLogout()">로그아웃</button>
+            </div>
+            
+            <h1>📝 진우SMC 업무 플래너</h1>
+            
+            <!-- 메뉴 탭 -->
         <div class="tab-menu">
             <button class="tab-btn active" onclick="showTab('write')">업무일지 작성</button>
             <button class="tab-btn" onclick="showTab('manage')">관리자 확인</button>
             <button class="tab-btn" onclick="showTab('analysis')">월간 분석</button>
+            <button class="tab-btn" onclick="showTab('users')">사용자 관리</button>
         </div>
 
         <!-- 업무일지 작성 탭 -->
@@ -339,6 +367,81 @@
                 </div>
             </div>
         </div>
+
+        <!-- 사용자 관리 탭 -->
+        <div id="usersTab" class="tab-content">
+            <!-- 관리자 인증 섹션 -->
+            <div id="userAuthSection" class="auth-section">
+                <div class="auth-container">
+                    <h3>🔐 관리자 인증</h3>
+                    <p>사용자 관리 기능을 사용하려면 관리자 인증이 필요합니다.</p>
+                    <div class="auth-form">
+                        <input type="password" id="userAdminPassword" placeholder="관리자 비밀번호 입력">
+                        <button type="button" class="btn-auth" onclick="authenticateUserAdmin()">인증</button>
+                    </div>
+                    <div id="userAuthError" class="message error hidden"></div>
+                </div>
+            </div>
+
+            <!-- 사용자 관리 메인 섹션 -->
+            <div id="userMainSection" class="hidden">
+                <h2>👥 사용자 관리</h2>
+                
+                <!-- 새 사용자 추가 -->
+                <div class="user-add-section">
+                    <h3>➕ 새 사용자 추가</h3>
+                    <div class="user-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="newUserName">담당자명</label>
+                                <input type="text" id="newUserName" placeholder="담당자명 입력">
+                            </div>
+                            <div class="form-group">
+                                <label for="newUserDept">부서</label>
+                                <select id="newUserDept">
+                                    <option value="">부서 선택</option>
+                                    <option value="관리부">관리부</option>
+                                    <option value="생산부">생산부</option>
+                                    <option value="연구소1팀">연구소1팀</option>
+                                    <option value="연구소2팀">연구소2팀</option>
+                                    <option value="연구소3팀">연구소3팀</option>
+                                    <option value="연구소4팀">연구소4팀</option>
+                                    <option value="연구소5팀">연구소5팀</option>
+                                    <option value="EV팀">EV팀</option>
+                                    <option value="전략팀">전략팀</option>
+                                    <option value="영업팀">영업팀</option>
+                                    <option value="기획팀">기획팀</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="newUserPassword">비밀번호</label>
+                                <input type="text" id="newUserPassword" placeholder="비밀번호 입력">
+                            </div>
+                            <div class="form-group">
+                                <button type="button" class="btn-add-user" onclick="addNewUser()">사용자 추가</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 기존 사용자 목록 -->
+                <div class="user-list-section">
+                    <h3>📋 사용자 목록</h3>
+                    <div class="user-controls">
+                        <button type="button" class="btn-refresh" onclick="loadUserList()">🔄 새로고침</button>
+                    </div>
+                    <div id="userList" class="user-list">
+                        <!-- 사용자 목록이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+
+                <!-- 상태 메시지 -->
+                <div id="userLoading" class="message loading hidden">처리 중...</div>
+                <div id="userSuccess" class="message success hidden"></div>
+                <div id="userError" class="message error hidden"></div>
+            </div>
+        </div>
+        </div> <!-- mainApp 닫기 -->
     </div>
 
     <script src="app.js"></script>
